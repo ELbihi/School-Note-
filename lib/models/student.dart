@@ -7,6 +7,7 @@ class Student {
   final String groupName;
   final String niveau;
   final String? email;
+  final String password;
 
   Student({
     this.id,
@@ -17,6 +18,7 @@ class Student {
     required this.groupName,
     required this.niveau,
     required this.email,
+    required this.password,
   });
 
   Map<String, dynamic> toMap() => {
@@ -28,6 +30,7 @@ class Student {
     'groupName': groupName,
     'niveau': niveau,
     'email': email,
+    'password': password,
   };
 
   factory Student.fromMap(Map<String, dynamic> map) => Student(
@@ -39,5 +42,6 @@ class Student {
     groupName: map['groupName'],
     niveau: map['niveau'],
     email: map['email'],
+    password: map['password'],
   );
 }

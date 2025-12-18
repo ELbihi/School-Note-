@@ -35,7 +35,8 @@ class DBService {
             firstName TEXT,
             lastName TEXT,
             groupName TEXT,
-            email TEXT
+            email TEXT,
+            password TEXT
           )
         ''');
 
