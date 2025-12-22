@@ -1,47 +1,41 @@
 class Student {
-  final int? id;
+  final int? idStudent;
   final String massar;
-  final String firstName;
-  final String lastName;
-  final String filiere;
-  final String groupName;
-  final String niveau;
-  final String? email;
+  final String nom;
+  final String prenom;
+  final String email;
   final String password;
+  final String groupe;
+  final int niveau;
+  final int idFiliere;
 
   Student({
-    this.id,
-    required this.massar,
-    required this.firstName,
-    required this.lastName,
-    required this.filiere,
-    required this.groupName,
-    required this.niveau,
-    required this.email,
-    required this.password,
+    this.idStudent, required this.massar, required this.nom, 
+    required this.prenom, required this.email, required this.password,
+    required this.groupe, required this.niveau, required this.idFiliere
   });
 
   Map<String, dynamic> toMap() => {
-    'id': id,
+    'id_student': idStudent,
     'massar': massar,
-    'firstName': firstName,
-    'lastName': lastName,
-    'filiere': filiere,
-    'groupName': groupName,
-    'niveau': niveau,
+    'nom': nom,
+    'prenom': prenom,
     'email': email,
     'password': password,
+    'groupe': groupe,
+    'niveau': niveau,
+    'id_filiere': idFiliere,
   };
 
   factory Student.fromMap(Map<String, dynamic> map) => Student(
-    id: map['id'],
+    idStudent: map['id_student'],
     massar: map['massar'],
-    firstName: map['firstName'],
-    lastName: map['lastName'],
-    filiere: map['filiere'],
-    groupName: map['groupName'],
-    niveau: map['niveau'],
+    nom: map['nom'],
+    prenom: map['prenom'],
     email: map['email'],
     password: map['password'],
+    groupe: map['groupe'],
+    niveau: map['niveau'],
+    idFiliere: map['id_filiere'],
   );
 }

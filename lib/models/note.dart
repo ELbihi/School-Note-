@@ -1,47 +1,29 @@
 class Note {
-  final int? id;
-  final int studentId;
-  final int moduleId;
+  final int? idNote;
   final double controle;
   final double tp;
   final double examen;
-  final double? project;
-  final double average;
-  final String result;
+  final double projet;
+  final double moyenne;
+  final String resultat;
+  final int idStudent;
+  final int idModule;
 
   Note({
-    this.id,
-    required this.studentId,
-    required this.moduleId,
-    required this.controle,
-    required this.tp,
-    required this.examen,
-    this.project,
-    required this.average,
-    required this.result,
+    this.idNote, required this.controle, required this.tp, required this.examen,
+    required this.projet, required this.moyenne, required this.resultat,
+    required this.idStudent, required this.idModule
   });
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'studentId': studentId,
-    'moduleId': moduleId,
-    'controle': controle,
-    'tp': tp,
-    'examen': examen,
-    'project': project,
-    'average': average,
-    'result': result,
+    'id_note': idNote, 'controle': controle, 'tp': tp, 'examen': examen,
+    'projet': projet, 'moyenne': moyenne, 'resultat': resultat,
+    'id_student': idStudent, 'id_module': idModule,
   };
 
   factory Note.fromMap(Map<String, dynamic> map) => Note(
-    id: map['id'],
-    studentId: map['studentId'],
-    moduleId: map['moduleId'],
-    controle: map['controle'],
-    tp: map['tp'],
-    examen: map['examen'],
-    project: map['project'],
-    average: map['average'],
-    result: map['result'],
+    idNote: map['id_note'], controle: map['controle'], tp: map['tp'],
+    examen: map['examen'], projet: map['projet'], moyenne: map['moyenne'],
+    resultat: map['resultat'], idStudent: map['id_student'], idModule: map['id_module'],
   );
 }

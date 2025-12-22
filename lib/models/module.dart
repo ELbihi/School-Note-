@@ -1,31 +1,23 @@
 class Module {
-  final int? id;
-  final String name;
-  final int coefficient;
-  final String semester;
-  final int profId;
+  final int? idModule;
+  final String nomModule;
+  final double coefficient;
+  final int idFiliere;
+  final int idSemestre;
+  final int idProf;
 
   Module({
-    this.id,
-    required this.name,
-    required this.coefficient,
-    required this.semester,
-    required this.profId,
+    this.idModule, required this.nomModule, required this.coefficient,
+    required this.idFiliere, required this.idSemestre, required this.idProf
   });
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'name': name,
-    'coefficient': coefficient,
-    'semester': semester,
-    'profId': profId,
+    'id_module': idModule, 'nom_module': nomModule, 'coefficient': coefficient,
+    'id_filiere': idFiliere, 'id_semestre': idSemestre, 'id_prof': idProf,
   };
 
   factory Module.fromMap(Map<String, dynamic> map) => Module(
-    id: map['id'],
-    name: map['name'],
-    coefficient: map['coefficient'],
-    semester: map['semester'],
-    profId: map['profId'],
+    idModule: map['id_module'], nomModule: map['nom_module'], coefficient: map['coefficient'],
+    idFiliere: map['id_filiere'], idSemestre: map['id_semestre'], idProf: map['id_prof'],
   );
 }
