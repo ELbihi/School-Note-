@@ -21,10 +21,20 @@ class DBService {
   }
 
   Future _createDB(Database db, int version) async {
-    await db.execute('CREATE TABLE FILIERE (id_filiere INTEGER PRIMARY KEY AUTOINCREMENT, nom_filiere TEXT, description TEXT)');
-    await db.execute('CREATE TABLE PROF (id_prof INTEGER PRIMARY KEY AUTOINCREMENT, nom TEXT, prenom TEXT, email TEXT, password TEXT)');
-    await db.execute('CREATE TABLE SEMESTRE (id_semestre INTEGER PRIMARY KEY AUTOINCREMENT, nom_semestre TEXT, annee TEXT)');
-    
+    await db.execute(
+        'CREATE TABLE FILIERE (id_filiere INTEGER PRIMARY KEY AUTOINCREMENT, nom_filiere TEXT, description TEXT)');
+    await db.execute(
+        'CREATE TABLE PROF (id_prof INTEGER PRIMARY KEY AUTOINCREMENT, nom TEXT, prenom TEXT, email TEXT, password TEXT)');
+    // Dans _createDB(), modifie cette ligne :
+    await db.execute('''
+      CREATE TABLE SEMESTRE (
+        id_semestre INTEGER PRIMARY KEY AUTOINCREMENT, 
+        nom_semestre TEXT, 
+        annee TEXT, 
+        id_filiere INTEGER,
+        FOREIGN KEY (id_filiere) REFERENCES FILIERE (id_filiere)
+      )
+    ''');
     await db.execute('''CREATE TABLE STUDENT (
       id_student INTEGER PRIMARY KEY AUTOINCREMENT, massar TEXT UNIQUE, nom TEXT, prenom TEXT, 
       email TEXT, password TEXT, groupe TEXT, niveau INTEGER, id_filiere INTEGER,
@@ -49,7 +59,8 @@ class DBService {
   Future<void> _seedData(Database db) async {
     // 1. Filières
     final filieres = ['Tronc Commun', 'AI', 'GINF', 'IRSI', 'ROC'];
-    for (var f in filieres) await db.insert('FILIERE', {'nom_filiere': f, 'description': 'Cycle $f'});
+    for (var f in filieres)
+      await db.insert('FILIERE', {'nom_filiere': f, 'description': 'Cycle $f'});
 
     int sCount = 0;
     // 2. Cycle Préparatoire (Année 1 & 2) - 200/an
@@ -57,7 +68,71 @@ class DBService {
     for (int y = 1; y <= 2; y++) {
       for (int i = 0; i < 200; i++) {
         sCount++;
-        await db.insert('STUDENT', _buildStudentMap(sCount, y, 1, pGroups[i % 6]));
+        await db.insert(
+            'STUDENT', _buildStudentMap(sCount, y, 1, pGroups[i % 6]));
+      }
+
+// ================= SEMESTRES =================
+
+// ===== TRONC COMMUN – 1ERE ANNEE =====
+      await db.insert('SEMESTRE', {
+        'nom_semestre': 'S1 - Tronc Commun 1ère année',
+        'id_filiere': 1,
+      });
+
+      await db.insert('SEMESTRE', {
+        'nom_semestre': 'S2 - Tronc Commun 1ère année',
+        'id_filiere': 1,
+      });
+
+// ===== TRONC COMMUN – 2EME ANNEE =====
+      await db.insert('SEMESTRE', {
+        'nom_semestre': 'S3 - Tronc Commun 2ème année',
+        'id_filiere': 1,
+      });
+
+      await db.insert('SEMESTRE', {
+        'nom_semestre': 'S4 - Tronc Commun 2ème année',
+        'id_filiere': 1,
+      });
+
+// ===== 1ERE ANNEE – IA / ROC / IRSI / GINF =====
+      for (int filiereId = 2; filiereId <= 5; filiereId++) {
+        await db.insert('SEMESTRE', {
+          'nom_semestre': 'S5 - 1ère année',
+          'id_filiere': filiereId,
+        });
+
+        await db.insert('SEMESTRE', {
+          'nom_semestre': 'S6 - 1ère année',
+          'id_filiere': filiereId,
+        });
+      }
+
+// ===== 2EME ANNEE – IA / ROC / IRSI / GINF =====
+      for (int filiereId = 2; filiereId <= 5; filiereId++) {
+        await db.insert('SEMESTRE', {
+          'nom_semestre': 'S7 - 2ème année',
+          'id_filiere': filiereId,
+        });
+
+        await db.insert('SEMESTRE', {
+          'nom_semestre': 'S8 - 2ème année',
+          'id_filiere': filiereId,
+        });
+      }
+
+// ===== 3EME ANNEE – IA / ROC / IRSI / GINF =====
+      for (int filiereId = 2; filiereId <= 5; filiereId++) {
+        await db.insert('SEMESTRE', {
+          'nom_semestre': 'S9 - 3ème année',
+          'id_filiere': filiereId,
+        });
+
+        await db.insert('SEMESTRE', {
+          'nom_semestre': 'S10 - 3ème année',
+          'id_filiere': filiereId,
+        });
       }
     }
 
@@ -68,7 +143,8 @@ class DBService {
         int limit = 40 + Random().nextInt(21);
         for (int i = 0; i < limit; i++) {
           sCount++;
-          await db.insert('STUDENT', _buildStudentMap(sCount, y, f, iGroups[i % 2]));
+          await db.insert(
+              'STUDENT', _buildStudentMap(sCount, y, f, iGroups[i % 2]));
         }
       }
     }
