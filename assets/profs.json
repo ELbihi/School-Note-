@@ -1,0 +1,38 @@
+[
+  {
+    "nom": "Ahmadi",
+    "prenom": "Karim",
+    "email": "k.ahmadi@school.ma",
+    "password": "pass_secure_1"
+  },
+  {
+    "nom": "Mansouri",
+    "prenom": "Sanae",
+    "email": "s.mansouri@school.ma",
+    "password": "pass_secure_2"
+  },
+    {
+    "nom": "belaidi",
+    "prenom": "ahmed",
+    "email": "b.ahmed@school.ma",
+    "password": "ahmed"
+  },
+  {
+    "nom": "belaidi",
+    "prenom": "mahfoud",
+    "email": "b.mahfoud@school.ma",
+    "password": "mahfoud"
+  },
+    {
+    "nom": "youssef",
+    "prenom": "youseef",
+    "email": "y.youssef@school.ma",
+    "password": "youssef"
+  },
+  {
+    "nom": "ghassan",
+    "prenom": "ghassan",
+    "email": "g.ghassan@school.ma",
+    "password": "ghassan"
+  }
+]

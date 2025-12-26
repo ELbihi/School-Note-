@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "../../../.."
+		},
+		{
+			"path": "../../../../../souha_shope48"
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "School_note"
+	}
+}

@@ -188,32 +188,9 @@ class _ModuleListPageState extends State<ModuleListPage> {
                   },
                 ),
 
-                const SizedBox(height: 12),
+              
 
-                // Statistiques rapides
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildStatItem('Total', _modules.length.toString(),
-                          Icons.library_books),
-                      _buildStatItem(
-                          'Filières',
-                          _getUniqueCount(_modules, 'nom_filiere').toString(),
-                          Icons.school),
-                      _buildStatItem(
-                          'Professeurs',
-                          _getUniqueCount(_modules, 'prof_nom').toString(),
-                          Icons.people),
-                    ],
-                  ),
-                ),
+               
               ],
             ),
           ),

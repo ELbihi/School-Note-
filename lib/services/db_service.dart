@@ -1,4 +1,5 @@
-import 'dart:math';
+import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -17,155 +18,180 @@ class DBService {
   Future<Database> _initDB(String filePath) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+    bool exists = await databaseExists(path);
+
+    if (!exists) {
+      try {
+        await Directory(dirname(path)).create(recursive: true);
+      } catch (_) {}
+      ByteData data = await rootBundle.load(join("assets", "school.db"));
+      List<int> bytes =
+          data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+      await File(path).writeAsBytes(bytes, flush: true);
+    }
+    return await openDatabase(path);
   }
 
-  Future _createDB(Database db, int version) async {
-    await db.execute(
-        'CREATE TABLE FILIERE (id_filiere INTEGER PRIMARY KEY AUTOINCREMENT, nom_filiere TEXT, description TEXT)');
-    await db.execute(
-        'CREATE TABLE PROF (id_prof INTEGER PRIMARY KEY AUTOINCREMENT, nom TEXT, prenom TEXT, email TEXT, password TEXT)');
-    // Dans _createDB(), modifie cette ligne :
-    await db.execute('''
-      CREATE TABLE SEMESTRE (
-        id_semestre INTEGER PRIMARY KEY AUTOINCREMENT, 
-        nom_semestre TEXT, 
-        annee TEXT, 
-        id_filiere INTEGER,
-        FOREIGN KEY (id_filiere) REFERENCES FILIERE (id_filiere)
-      )
+  // ==========================================
+  // --- MÉTHODES GÉNÉRIQUES (UTILES) ---
+  // ==========================================
+
+  Future<List<Map<String, dynamic>>> getAll(String table,
+      {String? orderBy}) async {
+    final db = await database;
+    return await db.query(table, orderBy: orderBy);
+  }
+
+  // ==========================================
+  // --- MÉTHODES SQL POUR PROFESSEURS ---
+  // ==========================================
+
+  Future<int> addProf(Map<String, dynamic> data) async {
+    final db = await database;
+    return await db.insert('PROF', data);
+  }
+
+  Future<int> updateProf(int id, Map<String, dynamic> data) async {
+    final db = await database;
+    return await db.update('PROF', data, where: 'id_prof = ?', whereArgs: [id]);
+  }
+
+  Future<int> deleteProf(int id) async {
+    final db = await database;
+    return await db.delete('PROF', where: 'id_prof = ?', whereArgs: [id]);
+  }
+
+  // ==========================================
+  // --- MÉTHODES SQL POUR ÉTUDIANTS ---
+  // ==========================================
+
+  // Récupère les étudiants avec le NOM de la filière (pour l'affichage)
+  Future<List<Map<String, dynamic>>> getStudentsWithFiliere() async {
+    final db = await database;
+    return await db.rawQuery('''
+      SELECT s.*, f.nom_filiere 
+      FROM STUDENT s 
+      LEFT JOIN FILIERE f ON s.id_filiere = f.id_filiere 
+      ORDER BY s.nom ASC
     ''');
-    await db.execute('''CREATE TABLE STUDENT (
-      id_student INTEGER PRIMARY KEY AUTOINCREMENT, massar TEXT UNIQUE, nom TEXT, prenom TEXT, 
-      email TEXT, password TEXT, groupe TEXT, niveau INTEGER, id_filiere INTEGER,
-      FOREIGN KEY (id_filiere) REFERENCES FILIERE (id_filiere))''');
-
-    await db.execute('''CREATE TABLE MODULE (
-      id_module INTEGER PRIMARY KEY AUTOINCREMENT, nom_module TEXT, coefficient REAL,
-      id_filiere INTEGER, id_semestre INTEGER, id_prof INTEGER,
-      FOREIGN KEY (id_filiere) REFERENCES FILIERE (id_filiere),
-      FOREIGN KEY (id_semestre) REFERENCES SEMESTRE (id_semestre),
-      FOREIGN KEY (id_prof) REFERENCES PROF (id_prof))''');
-
-    await db.execute('''CREATE TABLE NOTE (
-      id_note INTEGER PRIMARY KEY AUTOINCREMENT, controle REAL, tp REAL, examen REAL, 
-      projet REAL, moyenne REAL, resultat TEXT, id_student INTEGER, id_module INTEGER,
-      FOREIGN KEY (id_student) REFERENCES STUDENT (id_student),
-      FOREIGN KEY (id_module) REFERENCES MODULE (id_module))''');
-
-    await _seedData(db);
   }
 
-  Future<void> _seedData(Database db) async {
-    // 1. Filières
-    final filieres = ['Tronc Commun', 'AI', 'GINF', 'IRSI', 'ROC'];
-    for (var f in filieres)
-      await db.insert('FILIERE', {'nom_filiere': f, 'description': 'Cycle $f'});
-
-    int sCount = 0;
-    // 2. Cycle Préparatoire (Année 1 & 2) - 200/an
-    List<String> pGroups = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
-    for (int y = 1; y <= 2; y++) {
-      for (int i = 0; i < 200; i++) {
-        sCount++;
-        await db.insert(
-            'STUDENT', _buildStudentMap(sCount, y, 1, pGroups[i % 6]));
-      }
-
-// ================= SEMESTRES =================
-
-// ===== TRONC COMMUN – 1ERE ANNEE =====
-      await db.insert('SEMESTRE', {
-        'nom_semestre': 'S1 - Tronc Commun 1ère année',
-        'id_filiere': 1,
-      });
-
-      await db.insert('SEMESTRE', {
-        'nom_semestre': 'S2 - Tronc Commun 1ère année',
-        'id_filiere': 1,
-      });
-
-// ===== TRONC COMMUN – 2EME ANNEE =====
-      await db.insert('SEMESTRE', {
-        'nom_semestre': 'S3 - Tronc Commun 2ème année',
-        'id_filiere': 1,
-      });
-
-      await db.insert('SEMESTRE', {
-        'nom_semestre': 'S4 - Tronc Commun 2ème année',
-        'id_filiere': 1,
-      });
-
-// ===== 1ERE ANNEE – IA / ROC / IRSI / GINF =====
-      for (int filiereId = 2; filiereId <= 5; filiereId++) {
-        await db.insert('SEMESTRE', {
-          'nom_semestre': 'S5 - 1ère année',
-          'id_filiere': filiereId,
-        });
-
-        await db.insert('SEMESTRE', {
-          'nom_semestre': 'S6 - 1ère année',
-          'id_filiere': filiereId,
-        });
-      }
-
-// ===== 2EME ANNEE – IA / ROC / IRSI / GINF =====
-      for (int filiereId = 2; filiereId <= 5; filiereId++) {
-        await db.insert('SEMESTRE', {
-          'nom_semestre': 'S7 - 2ème année',
-          'id_filiere': filiereId,
-        });
-
-        await db.insert('SEMESTRE', {
-          'nom_semestre': 'S8 - 2ème année',
-          'id_filiere': filiereId,
-        });
-      }
-
-// ===== 3EME ANNEE – IA / ROC / IRSI / GINF =====
-      for (int filiereId = 2; filiereId <= 5; filiereId++) {
-        await db.insert('SEMESTRE', {
-          'nom_semestre': 'S9 - 3ème année',
-          'id_filiere': filiereId,
-        });
-
-        await db.insert('SEMESTRE', {
-          'nom_semestre': 'S10 - 3ème année',
-          'id_filiere': filiereId,
-        });
-      }
-    }
-
-    // 3. Cycle Ingénieur (Année 3, 4, 5) - 4 Filières
-    List<String> iGroups = ['A', 'B'];
-    for (int y = 3; y <= 5; y++) {
-      for (int f = 2; f <= 5; f++) {
-        int limit = 40 + Random().nextInt(21);
-        for (int i = 0; i < limit; i++) {
-          sCount++;
-          await db.insert(
-              'STUDENT', _buildStudentMap(sCount, y, f, iGroups[i % 2]));
-        }
-      }
-    }
+  Future<int> addStudent(Map<String, dynamic> data) async {
+    final db = await database;
+    return await db.insert('STUDENT', data);
   }
 
-  Map<String, dynamic> _buildStudentMap(int id, int nv, int fil, String grp) {
+  Future<int> updateStudent(int id, Map<String, dynamic> data) async {
+    final db = await database;
+    return await db
+        .update('STUDENT', data, where: 'id_student = ?', whereArgs: [id]);
+  }
+
+  Future<int> deleteStudent(int id) async {
+    final db = await database;
+    return await db.delete('STUDENT', where: 'id_student = ?', whereArgs: [id]);
+  }
+
+  // ==========================================
+  // --- MÉTHODES SQL POUR MODULES ---
+  // ==========================================
+
+  Future<List<Map<String, dynamic>>> getModulesWithDetails() async {
+    final db = await database;
+    return await db.rawQuery('''
+      SELECT m.*, f.nom_filiere, s.nom_semestre, p.nom || ' ' || p.prenom as prof_nom
+      FROM MODULE m
+      JOIN FILIERE f ON m.id_filiere = f.id_filiere
+      JOIN SEMESTRE s ON m.id_semestre = s.id_semestre
+      JOIN PROF p ON m.id_prof = p.id_prof
+    ''');
+  }
+
+  Future<int> addModule(Map<String, dynamic> data) async {
+    final db = await database;
+    return await db.insert('MODULE', data);
+  }
+
+  Future<int> updateModule(int id, Map<String, dynamic> data) async {
+    final db = await database;
+    return await db
+        .update('MODULE', data, where: 'id_module = ?', whereArgs: [id]);
+  }
+
+  // ==========================================
+  // --- MÉTHODES POUR DROPDOWNS ---
+  // ==========================================
+
+  Future<List<Map<String, dynamic>>> getAllFilieres() async {
+    final db = await database;
+    return await db.query('FILIERE', orderBy: 'nom_filiere');
+  }
+
+  Future<List<Map<String, dynamic>>> getSemestres() async {
+    final db = await database;
+    return await db.query('SEMESTRE');
+  }
+
+// Dans db_service.dart
+  Future<Map<String, dynamic>?> checkLogin(
+      String email, String password) async {
+    final db = await database;
+
+    // On cherche dans la table PROF si l'email et le mot de passe correspondent
+    final List<Map<String, dynamic>> result = await db.query(
+      'PROF',
+      where: 'email = ? AND password = ?',
+      whereArgs: [email, password],
+    );
+
+    if (result.isNotEmpty) {
+      return result.first; // Retourne les données du prof trouvé
+    }
+    return null; // Retourne null si rien n'est trouvé
+  }
+  // ==========================================
+  // --- STATISTIQUES (POUR HOME ADMIN) ---
+  // ==========================================
+
+  Future<Map<String, dynamic>> getAdminStats() async {
+    final db = await database;
+
+    final teachers =
+        Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM PROF')) ??
+            0;
+    final students = Sqflite.firstIntValue(
+            await db.rawQuery('SELECT COUNT(*) FROM STUDENT')) ??
+        0;
+    final modules = Sqflite.firstIntValue(
+            await db.rawQuery('SELECT COUNT(*) FROM MODULE')) ??
+        0;
+    final filieres = Sqflite.firstIntValue(
+            await db.rawQuery('SELECT COUNT(*) FROM FILIERE')) ??
+        0;
+
     return {
-      'massar': 'K${13000 + id}',
-      'nom': 'ALAMI${id}', // Pour l'ordre alphabétique simulé
-      'prenom': 'Ahmed${id}',
-      'email': 's$id@ecole.ma',
-      'password': '123',
-      'groupe': grp,
-      'niveau': nv,
-      'id_filiere': fil
+      'teachers': teachers,
+      'students': students,
+      'modules': modules,
+      'filieres': filieres,
     };
   }
-
-  // --- CRUD POUR LES NOTES ---
-  Future<int> insertNote(Map<String, dynamic> row) async {
-    Database db = await instance.database;
-    return await db.insert('NOTE', row);
-  }
+  // Dans votre classe DBService
+Future<void> importJsonData(String tableName, List<dynamic> jsonList) async {
+  final db = await database;
+  
+  // Utilisation d'une transaction pour que tout soit importé ou rien (si erreur)
+  await db.transaction((txn) async {
+    for (var item in jsonList) {
+      // On utilise 'insert' simplement. 
+      // Si vous voulez éviter les erreurs de doublons sur l'ID, 
+      // utilisez conflictAlgorithm: ConflictAlgorithm.ignore
+      await txn.insert(
+        tableName, 
+        item as Map<String, dynamic>,
+        conflictAlgorithm: ConflictAlgorithm.ignore, 
+      );
+    }
+  });
+}
 }

@@ -1,16 +1,9 @@
-// main.dart - Version Android seulement
 import 'package:flutter/material.dart';
-import '/screens/home_admin.dart';
-import 'services/db_service.dart';
+import 'screens/home_admin.dart';
+import 'screens/login_admin.dart'; // Vérifiez bien ce nom de fichier
 
-void main() {
-  // 🔴 FORCER LA RÉINITIALISATION DE LA BASE
-  final dbService = DBService.instance;
-
-  // Option 1: Utiliser forceReset si tu as ajouté la méthode
-
-  // Sur Android, sqflite s'initialise TOUT SEUL
-  // PAS besoin de sqfliteFfiInit()
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -22,13 +15,21 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'School Notes Admin',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-        fontFamily: 'Roboto',
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
       debugShowCheckedModeBanner: false,
-      home: const AdminHomePage(),
+
+      // CORRECTION 1: Retirez l'espace après /login
+      initialRoute: '/login',
+
+      routes: {
+        // La route par défaut '/' peut rester vers AdminHomePage
+        '/home_admin': (context) => const AdminHomePage(),
+
+        // CORRECTION 2: Assurez-vous que la clé correspond exactement à initialRoute
+        '/login': (context) => const LoginPage(),
+      },
     );
   }
 }

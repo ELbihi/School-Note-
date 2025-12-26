@@ -1,0 +1,42 @@
+[
+  {
+    "nom": "ALAOUI",
+    "prenom": "Omar",
+    "massar": "K123456789",
+    "niveau": 1,
+    "id_filiere": 1,
+    "email": "o.alaoui@student.ma"
+  },
+  {
+    "nom": "boudchich",
+    "prenom": "mohamed",
+    "massar": "K123456789",
+    "niveau": 1,
+    "id_filiere": 1,
+    "email": "b.mohamed@student.ma"
+  },
+  {
+    "nom": "belaidi",
+    "prenom": "souhaila",
+    "massar": "K123456789",
+    "niveau": 2,
+    "id_filiere": 1,
+    "email": "b.souha@student.ma"
+  },
+  {
+    "nom": "betahi",
+    "prenom": "soukayna",
+    "massar": "K123456789",
+    "niveau": 1,
+    "id_filiere": 3,
+    "email": "s.betahiaoui@student.ma"
+  },
+  {
+    "nom": "ghassane",
+    "prenom": "ghassan",
+    "massar": "K123456789",
+    "niveau": 2,
+    "id_filiere": 1,
+    "email": "g.gha@student.ma"
+  }
+]

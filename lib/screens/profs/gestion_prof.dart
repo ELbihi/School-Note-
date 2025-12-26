@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:note_school_ssbm/services/db_service.dart';
-import 'add_edit_prof.dart'; // Page d'ajout/modification
+import 'add_edit_prof.dart';
+import 'package:note_school_ssbm/services/import_service.dart';
 
 class ManageProfessorsPage extends StatefulWidget {
   const ManageProfessorsPage({super.key});
@@ -22,7 +23,9 @@ class _ManageProfessorsPageState extends State<ManageProfessorsPage> {
     _loadProfesseurs();
   }
 
+  // Charger les professeurs depuis la DB
   Future<void> _loadProfesseurs() async {
+    setState(() => _isLoading = true);
     try {
       final db = await dbService.database;
       final result = await db.query('PROF', orderBy: 'nom');
@@ -31,13 +34,14 @@ class _ManageProfessorsPageState extends State<ManageProfessorsPage> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Erreur: $e');
+      debugPrint('Erreur lors du chargement: $e');
       setState(() => _isLoading = false);
     }
   }
 
+  // Supprimer un professeur
   void _deleteProfesseur(int id) async {
-    final confirmed = await showDialog(
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Confirmer'),
@@ -49,7 +53,7 @@ class _ManageProfessorsPageState extends State<ManageProfessorsPage> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Supprimer'),
+            child: const Text('Supprimer', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -59,9 +63,15 @@ class _ManageProfessorsPageState extends State<ManageProfessorsPage> {
       final db = await dbService.database;
       await db.delete('PROF', where: 'id_prof = ?', whereArgs: [id]);
       _loadProfesseurs();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Professeur supprimé")),
+        );
+      }
     }
   }
 
+  // Filtrer la liste selon la recherche
   List<Map<String, dynamic>> get _filteredProfesseurs {
     if (_searchQuery.isEmpty) return _professeurs;
     return _professeurs.where((prof) {
@@ -69,7 +79,9 @@ class _ManageProfessorsPageState extends State<ManageProfessorsPage> {
       final prenom = prof['prenom']?.toString().toLowerCase() ?? '';
       final email = prof['email']?.toString().toLowerCase() ?? '';
       final query = _searchQuery.toLowerCase();
-      return nom.contains(query) || prenom.contains(query) || email.contains(query);
+      return nom.contains(query) ||
+          prenom.contains(query) ||
+          email.contains(query);
     }).toList();
   }
 
@@ -77,13 +89,35 @@ class _ManageProfessorsPageState extends State<ManageProfessorsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Gestion des Professeurs'),
-        backgroundColor: Colors.blueAccent,
-        centerTitle: true,
+        title: const Text("Gestion des Professeurs"),
         actions: [
+          // --- BOUTON IMPORTATION JSON ---
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadProfesseurs,
+            icon: const Icon(Icons.upload_file),
+            tooltip: "Importer des professeurs (JSON)",
+            onPressed: () async {
+              // Affiche un indicateur de chargement pendant l'import
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) =>
+                    const Center(child: CircularProgressIndicator()),
+              );
+
+              String message = await ImportService.pickAndImport('PROF');
+
+              if (mounted) {
+                Navigator.pop(context); // Fermer le loader
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(message),
+                    backgroundColor:
+                        message.contains('Erreur') ? Colors.red : Colors.green,
+                  ),
+                );
+                _loadProfesseurs(); // Actualiser la liste
+              }
+            },
           ),
         ],
       ),
@@ -96,33 +130,31 @@ class _ManageProfessorsPageState extends State<ManageProfessorsPage> {
               decoration: InputDecoration(
                 hintText: 'Rechercher un professeur...',
                 prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 filled: true,
                 fillColor: Colors.grey[50],
               ),
               onChanged: (value) => setState(() => _searchQuery = value),
             ),
           ),
-          
-          // Section statistiques
-          _buildStatsSection(),
-          
+
           // Liste des professeurs
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _filteredProfesseurs.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.people_outline, size: 80, color: Colors.grey),
-                            SizedBox(height: 16),
-                            Text(
+                            Icon(Icons.people_outline,
+                                size: 80, color: Colors.grey[400]),
+                            const SizedBox(height: 16),
+                            const Text(
                               'Aucun professeur trouvé',
-                              style: TextStyle(fontSize: 18, color: Colors.grey),
+                              style:
+                                  TextStyle(fontSize: 18, color: Colors.grey),
                             ),
                           ],
                         ),
@@ -133,40 +165,37 @@ class _ManageProfessorsPageState extends State<ManageProfessorsPage> {
                         itemBuilder: (ctx, index) {
                           final prof = _filteredProfesseurs[index];
                           return Card(
-                            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            elevation: 3,
+                            margin: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            elevation: 2,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                                borderRadius: BorderRadius.circular(12)),
                             child: ListTile(
                               leading: CircleAvatar(
                                 backgroundColor: Colors.blue.shade100,
-                                child: const Icon(Icons.person, color: Colors.blue),
+                                child: Text(prof['nom'][0].toUpperCase(),
+                                    style: const TextStyle(
+                                        color: Colors.blue,
+                                        fontWeight: FontWeight.bold)),
                               ),
                               title: Text(
                                 '${prof['prenom']} ${prof['nom']}',
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
                               ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(prof['email']?.toString() ?? ''),
-                                  Text(
-                                    'ID: ${prof['id_prof']}',
-                                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                  ),
-                                ],
-                              ),
+                              subtitle: Text(prof['email']?.toString() ?? ''),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   IconButton(
-                                    icon: const Icon(Icons.edit, color: Colors.blue),
+                                    icon: const Icon(Icons.edit,
+                                        color: Colors.blue),
                                     onPressed: () {
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (context) => ProfesseurFormPage(
+                                          builder: (context) =>
+                                              ProfesseurFormPage(
                                             professeur: prof,
                                             onSaved: _loadProfesseurs,
                                           ),
@@ -175,14 +204,13 @@ class _ManageProfessorsPageState extends State<ManageProfessorsPage> {
                                     },
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () => _deleteProfesseur(prof['id_prof'] as int),
+                                    icon: const Icon(Icons.delete,
+                                        color: Colors.red),
+                                    onPressed: () => _deleteProfesseur(
+                                        prof['id_prof'] as int),
                                   ),
                                 ],
                               ),
-                              onTap: () {
-                                // Option: Voir les détails
-                              },
                             ),
                           );
                         },
@@ -204,69 +232,6 @@ class _ManageProfessorsPageState extends State<ManageProfessorsPage> {
         backgroundColor: Colors.blueAccent,
         child: const Icon(Icons.add, color: Colors.white),
       ),
-    );
-  }
-
-  Widget _buildStatsSection() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      color: Colors.blue[50],
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildStatItem(
-            icon: Icons.people,
-            value: _professeurs.length.toString(),
-            label: 'Total',
-            color: Colors.blue,
-          ),
-          _buildStatItem(
-            icon: Icons.check_circle,
-            value: '${(_professeurs.length * 0.8).toInt()}',
-            label: 'Actifs',
-            color: Colors.green,
-          ),
-          _buildStatItem(
-            icon: Icons.school,
-            value: '${(_professeurs.length * 0.6).toInt()}',
-            label: 'Modules',
-            color: Colors.orange,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem({
-    required IconData icon,
-    required String value,
-    required String label,
-    required Color color,
-  }) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, color: color, size: 24),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
-        ),
-      ],
     );
   }
 }

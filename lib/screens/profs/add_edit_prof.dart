@@ -30,7 +30,7 @@ class _ProfesseurFormPageState extends State<ProfesseurFormPage> {
     super.initState();
     dbService = DBService.instance;
     _isEditing = widget.professeur != null;
-    
+
     if (_isEditing) {
       final prof = widget.professeur!;
       _nomController.text = prof['nom']?.toString() ?? '';
@@ -43,55 +43,26 @@ class _ProfesseurFormPageState extends State<ProfesseurFormPage> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSaving = true);
+
+    // Dans la méthode _saveProfesseur
+    final data = {
+      'nom': _nomController.text,
+      'prenom': _prenomController.text,
+      'email': _emailController.text,
+      'password':
+          _passwordController.text, // <-- Utilisez 'password' et NON 'mdp'
+    };
     try {
-      final db = await dbService.database;
-      final data = {
-        'nom': _nomController.text.trim(),
-        'prenom': _prenomController.text.trim(),
-        'email': _emailController.text.trim(),
-      };
-
-      // Ajouter le mot de passe seulement si modifié/nouveau
-      if (_passwordController.text.isNotEmpty || !_isEditing) {
-        data['password'] = _passwordController.text.isEmpty ? '123456' : _passwordController.text;
-      }
-
       if (_isEditing) {
-        await db.update(
-          'PROF',
-          data,
-          where: 'id_prof = ?',
-          whereArgs: [widget.professeur!['id_prof']],
-        );
+        await dbService.updateProf(widget.professeur!['id_prof'], data);
       } else {
-        await db.insert('PROF', data);
+        await dbService.addProf(data);
       }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_isEditing 
-              ? 'Professeur modifié avec succès'
-              : 'Professeur ajouté avec succès'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-
-      // Callback pour rafraîchir la liste
-      widget.onSaved?.call();
-      
-      // Retourner à la liste
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
+      if (widget.onSaved != null) widget.onSaved!();
+      Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur: ${e.toString()}'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Erreur: $e")));
     } finally {
       setState(() => _isSaving = false);
     }
@@ -101,7 +72,8 @@ class _ProfesseurFormPageState extends State<ProfesseurFormPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'Modifier le Professeur' : 'Ajouter un Professeur'),
+        title: Text(
+            _isEditing ? 'Modifier le Professeur' : 'Ajouter un Professeur'),
         backgroundColor: Colors.blueAccent,
         centerTitle: true,
         actions: [
@@ -122,7 +94,7 @@ class _ProfesseurFormPageState extends State<ProfesseurFormPage> {
             // En-tête avec le design spécifié
             _buildWelcomeSection(),
             const SizedBox(height: 30),
-            
+
             // Formulaire
             Form(
               key: _formKey,
@@ -133,7 +105,8 @@ class _ProfesseurFormPageState extends State<ProfesseurFormPage> {
                     controller: _nomController,
                     decoration: const InputDecoration(
                       labelText: 'Nom *',
-                      prefixIcon: Icon(Icons.person_outline, color: Colors.blue),
+                      prefixIcon:
+                          Icon(Icons.person_outline, color: Colors.blue),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.all(Radius.circular(12)),
                       ),
@@ -150,7 +123,7 @@ class _ProfesseurFormPageState extends State<ProfesseurFormPage> {
                     },
                   ),
                   const SizedBox(height: 20),
-                  
+
                   // Champ Prénom
                   TextFormField(
                     controller: _prenomController,
@@ -173,7 +146,7 @@ class _ProfesseurFormPageState extends State<ProfesseurFormPage> {
                     },
                   ),
                   const SizedBox(height: 20),
-                  
+
                   // Champ Email
                   TextFormField(
                     controller: _emailController,
@@ -200,13 +173,13 @@ class _ProfesseurFormPageState extends State<ProfesseurFormPage> {
                     },
                   ),
                   const SizedBox(height: 20),
-                  
+
                   // Champ Mot de passe
                   TextFormField(
                     controller: _passwordController,
                     decoration: InputDecoration(
-                      labelText: _isEditing 
-                          ? 'Mot de passe (laisser vide pour ne pas changer)' 
+                      labelText: _isEditing
+                          ? 'Mot de passe (laisser vide pour ne pas changer)'
                           : 'Mot de passe *',
                       prefixIcon: const Icon(Icons.lock, color: Colors.blue),
                       border: const OutlineInputBorder(
@@ -222,7 +195,9 @@ class _ProfesseurFormPageState extends State<ProfesseurFormPage> {
                       if (!_isEditing && (value == null || value.isEmpty)) {
                         return 'Veuillez entrer le mot de passe';
                       }
-                      if (value != null && value.isNotEmpty && value.length < 6) {
+                      if (value != null &&
+                          value.isNotEmpty &&
+                          value.length < 6) {
                         return 'Minimum 6 caractères';
                       }
                       return null;
@@ -231,13 +206,13 @@ class _ProfesseurFormPageState extends State<ProfesseurFormPage> {
                 ],
               ),
             ),
-            
+
             // Section informations système (seulement en mode édition)
             if (_isEditing && widget.professeur != null)
               _buildSystemInfoSection(),
-            
+
             const SizedBox(height: 40),
-            
+
             // Boutons d'action
             Row(
               children: [
@@ -256,10 +231,13 @@ class _ProfesseurFormPageState extends State<ProfesseurFormPage> {
                         ? const SizedBox(
                             height: 24,
                             width: 24,
-                            child: CircularProgressIndicator(color: Colors.white),
+                            child:
+                                CircularProgressIndicator(color: Colors.white),
                           )
                         : Text(
-                            _isEditing ? 'Mettre à jour' : 'Ajouter le Professeur',
+                            _isEditing
+                                ? 'Mettre à jour'
+                                : 'Ajouter le Professeur',
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -271,8 +249,8 @@ class _ProfesseurFormPageState extends State<ProfesseurFormPage> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: _isSaving 
-                        ? null 
+                    onPressed: _isSaving
+                        ? null
                         : () {
                             if (Navigator.canPop(context)) {
                               Navigator.pop(context);
@@ -336,7 +314,9 @@ class _ProfesseurFormPageState extends State<ProfesseurFormPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _isEditing ? 'Modifier le Professeur' : 'Ajouter un Professeur',
+                  _isEditing
+                      ? 'Modifier le Professeur'
+                      : 'Ajouter un Professeur',
                   style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -345,7 +325,7 @@ class _ProfesseurFormPageState extends State<ProfesseurFormPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _isEditing 
+                  _isEditing
                       ? 'Modifiez les informations du professeur'
                       : 'Remplissez les informations du professeur',
                   style: TextStyle(
@@ -399,7 +379,8 @@ class _ProfesseurFormPageState extends State<ProfesseurFormPage> {
             if (widget.professeur!['created_at'] != null)
               Row(
                 children: [
-                  const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
+                  const Icon(Icons.calendar_today,
+                      size: 16, color: Colors.grey),
                   const SizedBox(width: 8),
                   const Text('Créé le: ', style: TextStyle(color: Colors.grey)),
                   Text(
