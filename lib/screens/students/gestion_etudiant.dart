@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:note_school_ssbm/services/db_service.dart';
-import 'package:note_school_ssbm/services/import_service.dart'; // Importation du service JSON
+import 'package:note_school_ssbm/services/import_service.dart';
 import 'add_edit_etudiant.dart';
 
 class ManageStudentsPage extends StatefulWidget {
@@ -16,10 +16,14 @@ class _ManageStudentsPageState extends State<ManageStudentsPage> {
   List<Map<String, dynamic>> _filieres = [];
   bool _isLoading = true;
 
-  // Variables de filtrage
+  // --- VARIABLES DE FILTRAGE CORRIGÉES ---
   String _searchQuery = '';
   int? _selectedFiliere;
-  int? _selectedNiveau;
+  String?
+      _selectedNiveau; // Changé de int? à String? pour supporter CP1, CI1, etc.
+
+  // Liste exhaustive de vos niveaux
+  final List<String> _niveauxScolaires = ['CP1', 'CP2', 'CI1', 'CI2', 'CI3'];
 
   @override
   void initState() {
@@ -32,7 +36,8 @@ class _ManageStudentsPageState extends State<ManageStudentsPage> {
     setState(() => _isLoading = true);
     try {
       final etudiants = await dbService.getStudentsWithFiliere();
-      final filieres = await dbService.getAllFilieres();
+      final filieres =
+          await dbService.getAll('FILIERE', orderBy: 'nom_filiere');
 
       setState(() {
         _etudiants = etudiants;
@@ -41,23 +46,27 @@ class _ManageStudentsPageState extends State<ManageStudentsPage> {
       });
     } catch (e) {
       debugPrint('Erreur lors du chargement: $e');
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // Getter pour le filtrage
+  // --- LOGIQUE DE FILTRAGE MISE À JOUR ---
   List<Map<String, dynamic>> get _filteredEtudiants {
     return _etudiants.where((etud) {
+      // 1. Recherche Textuelle
       final nomComplet = '${etud['nom']} ${etud['prenom']}'.toLowerCase();
       final massar = (etud['massar'] ?? '').toString().toLowerCase();
       final searchLower = _searchQuery.toLowerCase();
-
       final matchesSearch =
           nomComplet.contains(searchLower) || massar.contains(searchLower);
+
+      // 2. Filtre Filière
       final matchesFiliere =
           _selectedFiliere == null || etud['id_filiere'] == _selectedFiliere;
-      final matchesNiveau =
-          _selectedNiveau == null || etud['niveau'] == _selectedNiveau;
+
+      // 3. Filtre Niveau (Comparaison de chaînes)
+      final matchesNiveau = _selectedNiveau == null ||
+          etud['niveau'].toString() == _selectedNiveau;
 
       return matchesSearch && matchesFiliere && matchesNiveau;
     }).toList();
@@ -95,14 +104,11 @@ class _ManageStudentsPageState extends State<ManageStudentsPage> {
         backgroundColor: Colors.blueAccent,
         foregroundColor: Colors.white,
         actions: [
-          // --- BOUTON IMPORTATION JSON ---
           IconButton(
             icon: const Icon(Icons.upload_file),
             tooltip: 'Importer JSON',
             onPressed: () async {
-              // Optionnel : Afficher un dialogue de chargement
               String message = await ImportService.pickAndImport('STUDENT');
-
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -111,7 +117,7 @@ class _ManageStudentsPageState extends State<ManageStudentsPage> {
                         message.contains('Erreur') ? Colors.red : Colors.green,
                   ),
                 );
-                _loadData(); // Très important pour rafraîchir l'affichage
+                _loadData();
               }
             },
           ),
@@ -155,13 +161,14 @@ class _ManageStudentsPageState extends State<ManageStudentsPage> {
                   prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10)),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
                 ),
                 onChanged: (value) => setState(() => _searchQuery = value),
               ),
               const SizedBox(height: 10),
               Row(
                 children: [
+                  // --- DROPDOWN FILIÈRE ---
                   Expanded(
                     child: DropdownButtonFormField<int?>(
                       value: _selectedFiliere,
@@ -172,7 +179,8 @@ class _ManageStudentsPageState extends State<ManageStudentsPage> {
                             value: null, child: Text('Toutes')),
                         ..._filieres.map((f) => DropdownMenuItem(
                               value: f['id_filiere'] as int,
-                              child: Text(f['nom_filiere'] ?? ''),
+                              child: Text(f['nom_filiere'] ?? '',
+                                  overflow: TextOverflow.ellipsis),
                             )),
                       ],
                       onChanged: (val) =>
@@ -180,18 +188,19 @@ class _ManageStudentsPageState extends State<ManageStudentsPage> {
                     ),
                   ),
                   const SizedBox(width: 10),
+                  // --- DROPDOWN NIVEAU (CP1, CI1...) ---
                   Expanded(
-                    child: DropdownButtonFormField<int?>(
+                    child: DropdownButtonFormField<String?>(
                       value: _selectedNiveau,
                       decoration: const InputDecoration(
                           labelText: 'Niveau', border: OutlineInputBorder()),
                       items: [
                         const DropdownMenuItem(
                             value: null, child: Text('Tous')),
-                        ...List.generate(
-                            5,
-                            (i) => DropdownMenuItem(
-                                value: i + 1, child: Text('Année ${i + 1}'))),
+                        ..._niveauxScolaires.map((niv) => DropdownMenuItem(
+                              value: niv,
+                              child: Text(niv),
+                            )),
                       ],
                       onChanged: (val) => setState(() => _selectedNiveau = val),
                     ),
@@ -219,13 +228,18 @@ class _ManageStudentsPageState extends State<ManageStudentsPage> {
           margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: Colors.blue[100],
-              child: Text(etud['nom'][0],
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              backgroundColor: Colors.blueAccent,
+              child: Text(
+                etud['nom'] != null && etud['nom'].toString().isNotEmpty
+                    ? etud['nom'][0].toUpperCase()
+                    : '?',
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold),
+              ),
             ),
             title: Text('${etud['nom']} ${etud['prenom']}'),
             subtitle: Text(
-                '${etud['nom_filiere'] ?? 'N/A'} - Année ${etud['niveau']}'),
+                '${etud['nom_filiere'] ?? 'N/A'} - Niveau: ${etud['niveau']}'),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

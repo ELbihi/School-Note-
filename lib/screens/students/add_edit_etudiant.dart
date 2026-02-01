@@ -33,25 +33,25 @@ class _EtudiantFormPageState extends State<EtudiantFormPage> {
   bool _isEditing = false;
 
   @override
-void initState() {
-  super.initState();
-  dbService = DBService.instance;
-  _isEditing = widget.etudiant != null;
-  _loadFilieres();
+  void initState() {
+    super.initState();
+    dbService = DBService.instance;
+    _isEditing = widget.etudiant != null;
+    _loadFilieres();
 
-  if (_isEditing) {
-    final etud = widget.etudiant!;
-    _massarController.text = etud['massar']?.toString() ?? '';
-    _nomController.text = etud['nom']?.toString() ?? '';
-    _prenomController.text = etud['prenom']?.toString() ?? '';
-    _emailController.text = etud['email']?.toString() ?? '';
-    _groupeController.text = etud['groupe']?.toString() ?? '';
+    if (_isEditing) {
+      final etud = widget.etudiant!;
+      _massarController.text = etud['massar']?.toString() ?? '';
+      _nomController.text = etud['nom']?.toString() ?? '';
+      _prenomController.text = etud['prenom']?.toString() ?? '';
+      _emailController.text = etud['email']?.toString() ?? '';
+      _groupeController.text = etud['groupe']?.toString() ?? '';
 
-    // CORRECTION ICI : Utiliser int.tryParse pour éviter le crash de cast
-    _selectedFiliere = int.tryParse(etud['id_filiere'].toString());
-    _selectedNiveau = int.tryParse(etud['niveau'].toString());
+      // CORRECTION ICI : Utiliser int.tryParse pour éviter le crash de cast
+      _selectedFiliere = int.tryParse(etud['id_filiere'].toString());
+      _selectedNiveau = int.tryParse(etud['niveau'].toString());
+    }
   }
-}
 
   Future<void> _loadFilieres() async {
     try {
@@ -80,10 +80,10 @@ void initState() {
 
     setState(() => _isSaving = true);
 
-    // Préparation des données pour la base de données
     final data = {
       'massar': _massarController.text.trim(),
-      'nom': _nomController.text.trim(),
+      'nom':
+          _nomController.text.trim().toUpperCase(), // Nom souvent en majuscule
       'prenom': _prenomController.text.trim(),
       'email': _emailController.text.trim(),
       'id_filiere': _selectedFiliere,
@@ -91,12 +91,11 @@ void initState() {
       'niveau': _selectedNiveau,
     };
 
-    // On n'ajoute le mot de passe que s'il est saisi (important pour la modification)
+    // Gestion du mot de passe
     if (_passwordController.text.isNotEmpty) {
-      data['password'] = _passwordController.text;
+      data['password'] = _passwordController.text.trim();
     } else if (!_isEditing) {
-      // Mot de passe par défaut si création et vide
-      data['password'] = '123456';
+      data['password'] = '123456'; // Mot de passe par défaut à la création
     }
 
     try {
@@ -107,18 +106,26 @@ void initState() {
       }
 
       if (widget.onSaved != null) widget.onSaved!();
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text("Opération réussie"),
-              backgroundColor: Colors.green),
+          SnackBar(
+            content: Text(_isEditing
+                ? "Profil étudiant mis à jour"
+                : "Étudiant et compte créés"),
+            backgroundColor: Colors.green,
+          ),
         );
         Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
+        String errorMsg = e.toString().contains('UNIQUE')
+            ? "Erreur : Ce Code Massar ou Email existe déjà."
+            : "Erreur technique : $e";
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Erreur: $e"), backgroundColor: Colors.red),
+          SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
         );
       }
     } finally {

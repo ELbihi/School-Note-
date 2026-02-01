@@ -39,34 +39,57 @@ class _ProfesseurFormPageState extends State<ProfesseurFormPage> {
     }
   }
 
+  // ... (imports et début de classe identiques)
+
   Future<void> _saveProfesseur() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSaving = true);
 
-    // Dans la méthode _saveProfesseur
     final data = {
-      'nom': _nomController.text,
-      'prenom': _prenomController.text,
-      'email': _emailController.text,
-      'password':
-          _passwordController.text, // <-- Utilisez 'password' et NON 'mdp'
+      'nom': _nomController.text.trim(),
+      'prenom': _prenomController.text.trim(),
+      'email': _emailController.text.trim(),
+      'password': _passwordController.text.trim(),
     };
+
     try {
       if (_isEditing) {
+        // En mode édition, on met à jour les infos
         await dbService.updateProf(widget.professeur!['id_prof'], data);
       } else {
+        // En mode ajout, la méthode addProf créera PROF + USER
         await dbService.addProf(data);
       }
+
       if (widget.onSaved != null) widget.onSaved!();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_isEditing
+              ? "Professeur mis à jour"
+              : "Professeur et compte utilisateur créés"),
+          backgroundColor: Colors.green,
+        ),
+      );
       Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Erreur: $e")));
+      if (!mounted) return;
+      // Gestion d'erreur si l'email existe déjà (contrainte UNIQUE dans la DB)
+      String errorMsg = e.toString().contains('UNIQUE')
+          ? "Cet email est déjà utilisé par un autre utilisateur."
+          : "Erreur: $e";
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+      );
     } finally {
-      setState(() => _isSaving = false);
+      if (mounted) setState(() => _isSaving = false);
     }
   }
+
+// ... (Le reste du build avec vos champs de texte)
 
   @override
   Widget build(BuildContext context) {

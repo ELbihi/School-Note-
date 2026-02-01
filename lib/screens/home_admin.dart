@@ -3,10 +3,10 @@ import 'profs/gestion_prof.dart';
 import 'profs/add_edit_prof.dart';
 import 'students/gestion_etudiant.dart';
 import 'students/add_edit_etudiant.dart';
-import 'profil.dart';
 import '../services/db_service.dart';
 import 'modules/gestion_module.dart';
 import 'modules/add_edit_module_page.dart';
+import 'note_etudiant.dart';
 
 class AdminHomePage extends StatefulWidget {
   const AdminHomePage({super.key});
@@ -18,12 +18,12 @@ class AdminHomePage extends StatefulWidget {
 class _AdminHomePageState extends State<AdminHomePage> {
   late DBService dbService;
   bool isLoading = true;
+
+  // Statistiques uniquement
   int totalTeachers = 0;
   int totalStudents = 0;
   int totalModules = 0;
   int totalFilieres = 0;
-  List<Map<String, dynamic>> studentDistribution = [];
-  List<Map<String, dynamic>> filiereStats = [];
 
   @override
   void initState() {
@@ -33,21 +33,27 @@ class _AdminHomePageState extends State<AdminHomePage> {
   }
 
   Future<void> _loadStatistics() async {
+    setState(() => isLoading = true);
+
+    // Appel au service simplifié
     final stats = await dbService.getAdminStats();
-    setState(() {
-      totalTeachers = stats['teachers'];
-      totalStudents = stats['students'];
-      totalModules = stats['modules'];
-      totalFilieres = stats['filieres'];
-      isLoading = false;
-    });
+
+    if (mounted) {
+      setState(() {
+        totalTeachers = stats['teachers'] ?? 0;
+        totalStudents = stats['students'] ?? 0;
+        totalModules = stats['modules'] ?? 0;
+        totalFilieres = stats['filieres'] ?? 0;
+        isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Icon(Icons.school),
+        title: const Icon(Icons.school),
         backgroundColor: Colors.blueAccent,
         centerTitle: true,
         elevation: 4,
@@ -66,11 +72,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   children: [
                     _buildSectionTitle('Statistiques Générales'),
                     _buildStatsGrid(),
-                    const SizedBox(height: 24),
-                    _buildStudentDistributionCard(),
-                    const SizedBox(height: 24),
-                    _buildFiliereStatsCard(),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 32),
                     _buildSectionTitle('Actions Rapides'),
                     _buildQuickActionsGrid(),
                     const SizedBox(height: 30),
@@ -130,121 +132,13 @@ class _AdminHomePageState extends State<AdminHomePage> {
             Icon(icon, size: 28, color: color),
             const SizedBox(height: 8),
             FittedBox(
-              // Empêche le texte de déborder si le chiffre est trop grand
               child: Text(value,
                   style: const TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.bold)),
+                      fontSize: 22, fontWeight: FontWeight.bold)),
             ),
             Text(title,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey[600], fontSize: 11)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStudentDistributionCard() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(children: [
-              Icon(Icons.bar_chart, color: Colors.blue),
-              SizedBox(width: 8),
-              Text('Distribution par Niveau',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))
-            ]),
-            const SizedBox(height: 16),
-            if (studentDistribution.isEmpty)
-              const Center(child: Text("Aucune donnée disponible")),
-            ...studentDistribution.map((data) {
-              final String niveau = data['niveau']?.toString() ?? '?';
-              final int count = int.tryParse(data['count'].toString()) ?? 0;
-              final double percent =
-                  totalStudents > 0 ? count / totalStudents : 0;
-
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Année $niveau',
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w500)),
-                        Text('$count (${(percent * 100).toStringAsFixed(1)}%)',
-                            style: const TextStyle(
-                                color: Colors.blueGrey,
-                                fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    LinearProgressIndicator(
-                      value: percent,
-                      color: _getColorForLevel(int.tryParse(niveau) ?? 0),
-                      backgroundColor: Colors.grey[200],
-                      minHeight: 8,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFiliereStatsCard() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            const Row(children: [
-              Icon(Icons.table_chart, color: Colors.blue),
-              SizedBox(width: 8),
-              Text('Détails par Filière',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))
-            ]),
-            const SizedBox(height: 10),
-            // Utilisation d'un container avec largeur infinie pour le défilement horizontal
-            SizedBox(
-              width: double.infinity,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columnSpacing: 20,
-                  columns: const [
-                    DataColumn(
-                        label: Text('Filière',
-                            style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(
-                        label: Text('Étud.',
-                            style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(
-                        label: Text('Mod.',
-                            style: TextStyle(fontWeight: FontWeight.bold))),
-                  ],
-                  rows: filiereStats
-                      .map((data) => DataRow(cells: [
-                            DataCell(Text(data['nom_filiere'].toString())),
-                            DataCell(Text(data['etudiants'].toString())),
-                            DataCell(Text(data['modules'].toString())),
-                          ]))
-                      .toList(),
-                ),
-              ),
-            ),
+                style: TextStyle(color: Colors.grey[600], fontSize: 12)),
           ],
         ),
       ),
@@ -277,7 +171,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
           color: color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(12),
@@ -287,14 +181,13 @@ class _AdminHomePageState extends State<AdminHomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, color: color, size: 20),
-            const SizedBox(width: 4),
+            const SizedBox(width: 8),
             Flexible(
-              // Pour éviter le débordement du texte sur petit écran
               child: Text(
                 label,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                    color: color, fontWeight: FontWeight.bold, fontSize: 12),
+                    color: color, fontWeight: FontWeight.bold, fontSize: 13),
               ),
             ),
           ],
@@ -303,18 +196,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
     );
   }
 
-  Color _getColorForLevel(int level) {
-    List<Color> palette = [
-      Colors.blue,
-      Colors.green,
-      Colors.orange,
-      Colors.purple,
-      Colors.red,
-      Colors.cyan
-    ];
-    return palette[level % palette.length];
-  }
-
+  // --- DRAWER ---
   Widget _buildDrawer() {
     return Drawer(
       backgroundColor: Colors.blueAccent,
@@ -325,7 +207,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
-                const Divider(),
+                const Divider(color: Colors.white24),
                 _buildDrawerItem(Icons.dashboard, 'Tableau de bord',
                     () => Navigator.pop(context),
                     isSelected: true),
@@ -335,9 +217,9 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     () => _navTo(const ManageProfessorsPage())),
                 _buildDrawerItem(Icons.school, 'Gestion Étudiants',
                     () => _navTo(const ManageStudentsPage())),
-                _buildDrawerItem(Icons.person, 'Mon Profil',
-                    () => _navTo(const ProfilePage())),
-                const Divider(),
+                _buildDrawerItem(Icons.assessment, 'Bulletins & Notes',
+                    () => _navTo(const NotesReportPage())),
+                const Divider(color: Colors.white24),
                 _buildDrawerItem(Icons.logout, 'Déconnexion', () {
                   Navigator.of(context)
                       .pushNamedAndRemoveUntil('/login', (route) => false);
@@ -351,69 +233,42 @@ class _AdminHomePageState extends State<AdminHomePage> {
   }
 
   Widget _buildDrawerHeader() {
-    return UserAccountsDrawerHeader(
-      margin:
-          EdgeInsets.zero, // Évite les espaces blancs parasites sur les côtés
-      decoration: const BoxDecoration(
+    return const UserAccountsDrawerHeader(
+      margin: EdgeInsets.zero,
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [Color(0xFF1A73E8), Color(0xFF0D47A1)],
         ),
       ),
-      currentAccountPicture: Container(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.15),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: const CircleAvatar(
-          child: Icon(
-            Icons.school,
-            color: Colors.blue,
-          ),
-        ),
+      currentAccountPicture: CircleAvatar(
+        backgroundColor: Colors.white,
+        child: Icon(Icons.school, color: Colors.blue, size: 40),
       ),
-      accountName: const Text(
-        'Administrateur',
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 18,
-          letterSpacing: 0.5,
-          color: Colors.white, // Toujours forcer le blanc sur fond bleu
-        ),
-      ),
-      accountEmail: const Text(
-        'admin@ump.ac.ma',
-        style: TextStyle(
-          color: Colors.white70,
-          fontSize: 14,
-        ),
-      ),
+      accountName: Text('Administrateur',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+      accountEmail:
+          Text('admin@ump.ac.ma', style: TextStyle(color: Colors.white70)),
     );
   }
 
   Widget _buildDrawerItem(IconData icon, String title, VoidCallback onTap,
       {bool isSelected = false}) {
     return ListTile(
-      leading: Icon(icon, color: isSelected ? Colors.blueAccent : Colors.white),
+      leading: Icon(icon, color: isSelected ? Colors.white : Colors.white70),
       title: Text(title,
           style: TextStyle(
-              color: isSelected ? Colors.blueAccent : Colors.white,
+              color: Colors.white,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
       onTap: onTap,
       selected: isSelected,
-      selectedTileColor: Colors.blue[50],
+      selectedTileColor: Colors.white.withOpacity(0.1),
     );
   }
 
   void _navTo(Widget page) {
-    Navigator.pop(context); // Ferme le drawer
+    Navigator.pop(context);
     Navigator.push(context, MaterialPageRoute(builder: (context) => page))
         .then((_) => _loadStatistics());
   }

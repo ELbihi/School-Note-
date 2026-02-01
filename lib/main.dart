@@ -1,10 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:note_school_ssbm/services/settingsprovider.dart';
+import 'package:provider/provider.dart'; // Importez provider
 import 'screens/home_admin.dart';
-import 'screens/login_admin.dart'; // Vérifiez bien ce nom de fichier
+import 'services/login.dart';
+
+// ... tes imports ...
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => SettingsProvider(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -12,22 +22,27 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // On récupère les réglages actuels
+    final settings = Provider.of<SettingsProvider>(context);
+
     return MaterialApp(
       title: 'School Notes Admin',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
       debugShowCheckedModeBanner: false,
+      
+      // GESTION DU THÈME SUR TOUTE L'APP
+      themeMode: settings.themeMode,
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.light),
+      ),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.dark),
+      ),
 
-      // CORRECTION 1: Retirez l'espace après /login
       initialRoute: '/login',
-
       routes: {
-        // La route par défaut '/' peut rester vers AdminHomePage
         '/home_admin': (context) => const AdminHomePage(),
-
-        // CORRECTION 2: Assurez-vous que la clé correspond exactement à initialRoute
         '/login': (context) => const LoginPage(),
       },
     );
